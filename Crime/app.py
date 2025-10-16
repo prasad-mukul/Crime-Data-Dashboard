@@ -140,110 +140,65 @@ else:
     # STATE CRIME SEARCH (fixed)
     # ============================
     elif st.session_state.page == "CrimeSearch":
-        st.markdown("## 🔍 State Crime Search")
-        st.button("⬅ Back to Home", on_click=lambda: go_to("Home"))
-        
-        # --- Filters ---
-        years = get_years(data)
-        selected_year = st.selectbox("Select Year", years) if years and len(years) > 0 else None
+    st.markdown("## 🔍 State Crime Search")
+    st.button("⬅ Back to Home", on_click=lambda: go_to("Home"))
 
-        states = get_states(data)
-        selected_state = st.selectbox("Select State/UT", states) if states else None
+    # --- Filters ---
+    years = get_years(data)
+    selected_year = st.selectbox("Select Year", years) if years else None
 
-        # Defensive check: ensure data is loaded and has STATE/UT
-        if data.empty:
-            st.error("Data not loaded. Please check crime.csv and backend.load_data().")
-            st.stop()
-        if "STATE/UT" not in data.columns:
-            st.error("Column 'STATE/UT' missing in dataset. Please verify your CSV header.")
-            st.stop()
+    states = get_states(data)
+    selected_state = st.selectbox("Select State/UT", states) if states else None
 
-        # Filter state data safely (STATE/UT values in backend are normalized to UPPER)
-        # ---- Robust State Filtering ----
-        selected_district = None  # always initialize
+    selected_district = None  # Initialize
 
-        if selected_state:
-    # Match more loosely to avoid missing due to stray spaces or formatting
-            state_data_filtered = data[data["STATE/UT"].str.contains(selected_state.upper(), na=False)]
+    if selected_state:
+        # ✅ Strict state filtering (uppercase match, ignores extra spaces)
+        state_data_filtered = data[data["STATE/UT"].str.upper().str.strip() == selected_state.upper().strip()]
+
+        if selected_year:
+            state_data_filtered = state_data_filtered[state_data_filtered["YEAR"] == selected_year]
+
+        # ✅ Extract clean district list
+        if "DISTRICT" in state_data_filtered.columns:
+            districts = sorted([
+                d for d in state_data_filtered["DISTRICT"].unique()
+                if isinstance(d, str) and d.strip() and not d.strip().isdigit()
+            ])
         else:
-            state_data_filtered = pd.DataFrame()
-
-        # ---- District Dropdown ----
-        if not state_data_filtered.empty and "DISTRICT" in state_data_filtered.columns:
-            districts = sorted([d for d in state_data_filtered["DISTRICT"].unique() if isinstance(d, str) and d.strip() != ""])
-    
-            if districts:
-                selected_district = st.selectbox("Select District", districts)
-            else:
-                st.warning(f"⚠ No districts found for state: {selected_state}")
-        else:
-            st.warning(f"⚠ No matching rows for state: {selected_state} (Check CSV formatting)")
-
-
-        # Safe district dropdown: only show when DISTRICT column exists and there is data
-        if not state_data_filtered.empty and "DISTRICT" in state_data_filtered.columns:
-            # Remove empty / nan district labels and keep unique values
-            districts = [d for d in state_data_filtered["DISTRICT"].unique() if pd.notna(d) and str(d).strip() != ""]
-            if len(districts) > 0:
-                selected_district = st.selectbox("Select District", districts)
-            else:
-                st.warning("⚠️ No districts found for this state (DISTRICT values are empty).")
-        else:
-            # If no data found for the state or DISTRICT column missing, inform the user
-            if state_data_filtered.empty and selected_state:
-                st.warning(f"⚠️ No data rows found for state: {selected_state}. Check CSV capitalization or data.")
-            elif "DISTRICT" not in data.columns:
-                st.warning("⚠️ 'DISTRICT' column missing in the dataset. Please verify your CSV header.")
             districts = []
+
+        selected_district = st.selectbox("Select District", districts) if districts else st.warning(
+            f"⚠️ No valid districts found for {selected_state} in {selected_year}."
+        )
+
+    st.divider()
+
+    if selected_state and selected_district:
+        district_data = filter_state_district(data, selected_state, selected_district, selected_year)
+
+        st.markdown(f"### 📋 Summary for {selected_district}, {selected_state}")
+        st.dataframe(district_data, use_container_width=True, height=200)
 
         st.markdown("---")
 
-        # Only proceed if both a state and a district are selected
-        if selected_state and selected_district:
-            # Use backend filter function; pass parameters in the order your function expects
-            district_data = filter_state_district(data, selected_state.upper(), selected_district, selected_year)
+        # --- Crime Comparison ---
+        crime_columns = ["MURDER", "RAPE", "KIDNAPPING & ABDUCTION", "THEFT", "BURGLARY", "DOWRY DEATHS", "TOTAL IPC CRIMES"]
+        available_crime_cols = [c for c in crime_columns if c in district_data.columns]
 
-            # --- 1. District Summary ---
-            st.markdown(f"### 📋 Summary for {selected_district}, {selected_state}")
-            st.dataframe(district_data, use_container_width=True, height=200)
-
-            st.markdown("---")
-
-            # --- 2. Crime Comparison Bar Chart ---
-            crime_columns = ["MURDER", "RAPE", "KIDNAPPING & ABDUCTION",
-                             "THEFT", "BURGLARY", "DOWRY DEATHS", "TOTAL IPC CRIMES"]
-
-            # Defensive: keep only columns that actually exist in the dataframe
-            available_crime_cols = [c for c in crime_columns if c in district_data.columns]
-            if len(available_crime_cols) == 0:
-                st.info("No matching crime columns available to plot for this district.")
-            else:
-                crime_sums = district_data[available_crime_cols].sum(numeric_only=True)
-
-                st.markdown("### 📊 Major Crime Comparison")
-                fig, ax = plt.subplots(figsize=(8, 5))
-
-                bar_color = "#3498DB"
-                crime_sums.plot(kind="bar", color=bar_color, ax=ax)
-
-                # Add data labels on top of bars (works even with pandas plotting)
-                for container in ax.containers:
-                    ax.bar_label(container, fmt='%.0f', label_type='edge', fontsize=9)
-
-                ax.set_title(f"Major Crimes in {selected_district}", fontsize=14, fontweight='bold')
-                ax.set_ylabel("Number of Cases", fontsize=11)
-                ax.set_xlabel("Crime Type", fontsize=11)
-                ax.tick_params(axis='x', rotation=45)
-                ax.grid(axis='y', linestyle='--', alpha=0.7)
-                ax.set_axisbelow(True)
-
-                plt.tight_layout()
-                st.pyplot(fig)
-                plt.close(fig)
+        if available_crime_cols:
+            crime_sums = district_data[available_crime_cols].sum(numeric_only=True)
+            st.markdown("### 📊 Major Crime Comparison")
+            fig, ax = plt.subplots(figsize=(8, 5))
+            crime_sums.plot(kind="bar", ax=ax)
+            for container in ax.containers:
+                ax.bar_label(container, fmt='%.0f')
+            ax.set_title(f"Major Crimes in {selected_district}")
+            st.pyplot(fig)
         else:
-            st.info("👉 Please select a state and district to view data.")
-
-
+            st.info("No crime data available for plotting.")
+    else:
+        st.info("👉 Please select a state and district to view data.")
 
     # ============================
     # SAFETY RATIO PAGE
@@ -480,5 +435,6 @@ else:
             st.info("👉 Please select a state to generate future predictions.")
 
         st.divider()
+
 
 
