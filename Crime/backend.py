@@ -16,7 +16,9 @@ def load_data():
     and **normalizes STATE/UT and DISTRICT names** to ensure consistent filtering.
     """
     try:
-        data = pd.read_csv("crime.csv")
+        import os
+        data_path = os.path.join(os.path.dirname(__file__), "crime.csv")
+        data = pd.read_csv(data_path)
     except FileNotFoundError:
         print("Error: crime.csv not found. Please ensure the file is in the same directory.")
         return pd.DataFrame()
@@ -144,3 +146,4 @@ def get_top_crime_composition(data, state, top_n=5):
         composition = top_crimes
 
     return composition
+
