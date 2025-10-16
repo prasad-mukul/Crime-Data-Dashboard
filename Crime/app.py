@@ -152,13 +152,21 @@ else:
         selected_state = st.selectbox("Select State/UT", states)
 
         # Filter state data based on the selection
-        state_data_filtered = data[data["STATE/UT"] == selected_state.upper()]
-        if "DISTRICT" in state_data_filtered.columns:
+        # --- Filter and safely select District ---
+        if selected_state:
+            state_data_filtered = data[data["STATE/UT"] == selected_state.upper()]
+        else:
+            state_data_filtered = pd.DataFrame()
+        selected_district = None  # initialize to avoid NameError
+        if not state_data_filtered.empty and "DISTRICT" in state_data_filtered.columns:
             districts = state_data_filtered["DISTRICT"].unique()
+            if len(districts) > 0:
+                selected_district = st.selectbox("Select District", districts)
+            else:
+                st.warning("⚠️ No districts found for this state.")
         else:
             districts = []
             st.warning("⚠️ 'DISTRICT' column missing in the filtered data. Please verify your CSV.")
-            selected_district = st.selectbox("Select District", districts)
 
         st.divider() 
 
@@ -436,5 +444,6 @@ else:
             st.info("👉 Please select a state to generate future predictions.")
 
         st.divider()
+
 
 
