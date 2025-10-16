@@ -140,21 +140,21 @@ else:
     # STATE CRIME SEARCH (fixed)
     # ============================
     elif st.session_state.page == "CrimeSearch":
-    st.markdown("## 🔍 State Crime Search")
-    st.button("⬅ Back to Home", on_click=lambda: go_to("Home"))
+        st.markdown("## 🔍 State Crime Search")
+        st.button("⬅ Back to Home", on_click=lambda: go_to("Home"))
 
     # --- Filters ---
-    years = get_years(data)
-    selected_year = st.selectbox("Select Year", years) if years else None
+        years = get_years(data)
+        selected_year = st.selectbox("Select Year", years) if years else None
 
-    states = get_states(data)
-    selected_state = st.selectbox("Select State/UT", states) if states else None
+        states = get_states(data)
+        selected_state = st.selectbox("Select State/UT", states) if states else None
 
-    selected_district = None  # Initialize
+        selected_district = None  # Initialize
 
-    if selected_state:
+        if selected_state:
         # ✅ Strict state filtering (uppercase match, ignores extra spaces)
-        state_data_filtered = data[data["STATE/UT"].str.upper().str.strip() == selected_state.upper().strip()]
+            state_data_filtered = data[data["STATE/UT"].str.upper().str.strip() == selected_state.upper().strip()]
 
         if selected_year:
             state_data_filtered = state_data_filtered[state_data_filtered["YEAR"] == selected_year]
@@ -435,6 +435,7 @@ else:
             st.info("👉 Please select a state to generate future predictions.")
 
         st.divider()
+
 
 
 
