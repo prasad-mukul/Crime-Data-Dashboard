@@ -11,10 +11,12 @@ USER_CREDENTIALS = {
 def load_data():
     """
     Loads data, cleans it, and uses an "allow-list" of states/UTs
-    to ensure only valid geographical locations are included.
+    and more robust district filtering to ensure only valid geographical 
+    locations are included.
     """
     try:
-        data_path = os.path.join(os.path.dirname(_file_), "crime.csv")
+        # Assumes crime.csv is in the same directory as this script.
+        data_path = os.path.join(os.path.dirname(os.path.abspath(_file_)), "crime.csv")
         data = pd.read_csv(data_path)
     except FileNotFoundError:
         print("Error: crime.csv not found. Please ensure the file is in the same directory.")
@@ -30,7 +32,7 @@ def load_data():
     if 'DISTRICT' in data.columns:
         data['DISTRICT'] = data['DISTRICT'].astype(str).str.strip().str.upper()
 
-    # --- ROBUST FIX: Use an allow-list to keep only actual States/UTs ---
+    # --- ROBUST FIX 1: Use an allow-list to keep only actual States/UTs ---
     known_states_uts = [
         'ANDAMAN & NICOBAR ISLANDS', 'ANDHRA PRADESH', 'ARUNACHAL PRADESH',
         'ASSAM', 'BIHAR', 'CHANDIGARH', 'CHHATTISGARH', 'DADRA & NAGAR HAVELI',
@@ -43,11 +45,17 @@ def load_data():
     if 'STATE/UT' in data.columns:
         data = data[data['STATE/UT'].isin(known_states_uts)]
 
-    # Filter out any remaining 'TOTAL' districts as a final cleanup step.
+    # --- ROBUST FIX 2: Remove all state-level summary rows ---
+    # These rows often have 'TOTAL' in the district column or have the state name
+    # duplicated in the district column. This removes both types.
     if 'DISTRICT' in data.columns:
-        data = data[data['DISTRICT'] != "TOTAL"]
+        # Exclude rows where DISTRICT contains 'TOTAL' (e.g., 'TOTAL DISTRICTS')
+        data = data[~data['DISTRICT'].str.contains('TOTAL', na=False)]
+        # Exclude rows where DISTRICT is the same as the STATE/UT (a common summary pattern)
+        data = data[data['DISTRICT'] != data['STATE/UT']]
 
-    # 2. Ensure crime columns are numeric
+
+    # 3. Ensure crime columns are numeric
     crime_cols = [col for col in data.columns if col not in ['STATE/UT', 'DISTRICT', 'YEAR']]
     for col in crime_cols:
         data[col] = pd.to_numeric(data[col], errors='coerce').fillna(0).astype(int)
@@ -79,7 +87,6 @@ def register_user(username, password):
 def get_states(data):
     """Returns a sorted list of unique states from the cleaned data."""
     if 'STATE/UT' in data.columns:
-        # TYPO FIX: The closing quote was incorrect (was a single quote ')
         return sorted(data["STATE/UT"].unique())
     return []
 
