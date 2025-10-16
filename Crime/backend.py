@@ -10,8 +10,8 @@ USER_CREDENTIALS = {
 
 def load_data():
     """
-    Loads data, cleans column names, ensures numerical columns are numeric,
-    and normalizes STATE/UT and DISTRICT names to ensure consistent filtering.
+    Loads data, cleans it, and uses an "allow-list" of states/UTs
+    to ensure only valid geographical locations are included.
     """
     try:
         data_path = os.path.join(os.path.dirname(_file_), "crime.csv")
@@ -30,14 +30,21 @@ def load_data():
     if 'DISTRICT' in data.columns:
         data['DISTRICT'] = data['DISTRICT'].astype(str).str.strip().str.upper()
 
-    # --- FIX: Remove summary/total rows from the dataset ---
-    # Many datasets include "TOTAL" rows which are not actual locations.
-    # This filters them out to prevent them from appearing in dropdown menus.
+    # --- ROBUST FIX: Use an allow-list to keep only actual States/UTs ---
+    known_states_uts = [
+        'ANDAMAN & NICOBAR ISLANDS', 'ANDHRA PRADESH', 'ARUNACHAL PRADESH',
+        'ASSAM', 'BIHAR', 'CHANDIGARH', 'CHHATTISGARH', 'DADRA & NAGAR HAVELI',
+        'DAMAN & DIU', 'DELHI', 'GOA', 'GUJARAT', 'HARYANA', 'HIMACHAL PRADESH',
+        'JAMMU & KASHMIR', 'JHARKHAND', 'KARNATAKA', 'KERALA', 'LAKSHADWEEP',
+        'MADHYA PRADESH', 'MAHARASHTRA', 'MANIPUR', 'MEGHALAYA', 'MIZORAM',
+        'NAGALAND', 'ODISHA', 'PUDUCHERRY', 'PUNJAB', 'RAJASTHAN', 'SIKKIM',
+        'TAMIL NADU', 'TRIPURA', 'UTTAR PRADESH', 'UTTARAKHAND', 'WEST BENGAL'
+    ]
     if 'STATE/UT' in data.columns:
-        # This will remove rows like 'TOTAL (ALL-INDIA)', 'TOTAL (STATES)', etc.
-        data = data[~data['STATE/UT'].str.contains("TOTAL")]
+        data = data[data['STATE/UT'].isin(known_states_uts)]
+
+    # Filter out any remaining 'TOTAL' districts as a final cleanup step.
     if 'DISTRICT' in data.columns:
-        # This will remove rows where the district is just 'TOTAL' for a state.
         data = data[data['DISTRICT'] != "TOTAL"]
 
     # 2. Ensure crime columns are numeric
@@ -70,8 +77,9 @@ def register_user(username, password):
 # --- Data Utility Functions ---
 
 def get_states(data):
-    """Returns a sorted list of unique states."""
+    """Returns a sorted list of unique states from the cleaned data."""
     if 'STATE/UT' in data.columns:
+        # TYPO FIX: The closing quote was incorrect (was a single quote ')
         return sorted(data["STATE/UT"].unique())
     return []
 
