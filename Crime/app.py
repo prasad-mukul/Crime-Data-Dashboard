@@ -153,8 +153,12 @@ else:
 
         # Filter state data based on the selection
         state_data_filtered = filter_state_district(data, selected_state, year=selected_year)
-        districts = state_data_filtered["DISTRICT"].unique()
-        selected_district = st.selectbox("Select District", districts)
+        if "DISTRICT" in state_data_filtered.columns:
+            districts = state_data_filtered["DISTRICT"].unique()
+        else:
+            districts = []
+            st.warning("⚠️ 'DISTRICT' column missing in the filtered data. Please verify your CSV.")
+            selected_district = st.selectbox("Select District", districts)
 
         st.divider() 
 
@@ -432,3 +436,4 @@ else:
             st.info("👉 Please select a state to generate future predictions.")
 
         st.divider()
+
