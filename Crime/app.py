@@ -140,65 +140,101 @@ else:
     # ============================
     # STATE CRIME SEARCH
     # ============================
+        # ============================
+    # STATE CRIME SEARCH (fixed)
+    # ============================
     elif st.session_state.page == "CrimeSearch":
         st.markdown("## 🔍 State Crime Search")
-        st.button("⬅ Back to Home", on_click=lambda: go_to("Home")) 
+        st.button("⬅ Back to Home", on_click=lambda: go_to("Home"))
         
         # --- Filters ---
         years = get_years(data)
         selected_year = st.selectbox("Select Year", years) if years and len(years) > 0 else None
-        
+
         states = get_states(data)
-        selected_state = st.selectbox("Select State/UT", states)
+        selected_state = st.selectbox("Select State/UT", states) if states else None
 
-        # Filter state data based on the selection
-        state_data_filtered = data[data["STATE/UT"] == selected_state.upper()]
-        if "DISTRICT" in state_data_filtered.columns:
-            districts = state_data_filtered["DISTRICT"].unique()
+        # Defensive check: ensure data is loaded and has STATE/UT
+        if data.empty:
+            st.error("Data not loaded. Please check crime.csv and backend.load_data().")
+            st.stop()
+        if "STATE/UT" not in data.columns:
+            st.error("Column 'STATE/UT' missing in dataset. Please verify your CSV header.")
+            st.stop()
+
+        # Filter state data safely (STATE/UT values in backend are normalized to UPPER)
+        if selected_state:
+            state_upper = selected_state.upper()
+            state_data_filtered = data[data["STATE/UT"] == state_upper].copy()
         else:
+            state_data_filtered = pd.DataFrame()
+
+        # Make sure DISTRICT selection variable always exists
+        selected_district = None
+
+        # Safe district dropdown: only show when DISTRICT column exists and there is data
+        if not state_data_filtered.empty and "DISTRICT" in state_data_filtered.columns:
+            # Remove empty / nan district labels and keep unique values
+            districts = [d for d in state_data_filtered["DISTRICT"].unique() if pd.notna(d) and str(d).strip() != ""]
+            if len(districts) > 0:
+                selected_district = st.selectbox("Select District", districts)
+            else:
+                st.warning("⚠️ No districts found for this state (DISTRICT values are empty).")
+        else:
+            # If no data found for the state or DISTRICT column missing, inform the user
+            if state_data_filtered.empty and selected_state:
+                st.warning(f"⚠️ No data rows found for state: {selected_state}. Check CSV capitalization or data.")
+            elif "DISTRICT" not in data.columns:
+                st.warning("⚠️ 'DISTRICT' column missing in the dataset. Please verify your CSV header.")
             districts = []
-            st.warning("⚠ 'DISTRICT' column missing in the filtered data. Please verify your CSV.")
-            selected_district = st.selectbox("Select District", districts)
 
-        st.divider() 
+        st.markdown("---")
 
+        # Only proceed if both a state and a district are selected
         if selected_state and selected_district:
-            district_data = filter_state_district(data, selected_state, selected_district, selected_year)
-            
+            # Use backend filter function; pass parameters in the order your function expects
+            district_data = filter_state_district(data, selected_state.upper(), selected_district, selected_year)
+
             # --- 1. District Summary ---
             st.markdown(f"### 📋 Summary for {selected_district}, {selected_state}")
-            st.dataframe(district_data, width='stretch', height=80) 
+            st.dataframe(district_data, use_container_width=True, height=200)
 
-            st.divider() 
+            st.markdown("---")
 
             # --- 2. Crime Comparison Bar Chart ---
             crime_columns = ["MURDER", "RAPE", "KIDNAPPING & ABDUCTION",
                              "THEFT", "BURGLARY", "DOWRY DEATHS", "TOTAL IPC CRIMES"]
-            
-            crime_sums = district_data[crime_columns].sum(numeric_only=True)
-            
-            st.markdown("### 📊 Major Crime Comparison")
-            fig, ax = plt.subplots(figsize=(8, 5)) 
-            
-            bar_color = "#3498DB"
-            crime_sums.plot(kind="bar", color=bar_color, ax=ax)
-            
-            # Add Data Labels on top of bars
-            for container in ax.containers:
-                ax.bar_label(container, fmt='%.0f', label_type='edge', fontsize=9)
-                
-            ax.set_title(f"Major Crimes in {selected_district}", fontsize=14, fontweight='bold')
-            ax.set_ylabel("Number of Cases", fontsize=11)
-            ax.set_xlabel("Crime Type", fontsize=11) 
-            ax.tick_params(axis='x', rotation=45)
-            ax.grid(axis='y', linestyle='--', alpha=0.7) 
-            ax.set_axisbelow(True) 
-            
-            plt.tight_layout()
-            st.pyplot(fig)
-            plt.close(fig) # Resource Cleanup
+
+            # Defensive: keep only columns that actually exist in the dataframe
+            available_crime_cols = [c for c in crime_columns if c in district_data.columns]
+            if len(available_crime_cols) == 0:
+                st.info("No matching crime columns available to plot for this district.")
+            else:
+                crime_sums = district_data[available_crime_cols].sum(numeric_only=True)
+
+                st.markdown("### 📊 Major Crime Comparison")
+                fig, ax = plt.subplots(figsize=(8, 5))
+
+                bar_color = "#3498DB"
+                crime_sums.plot(kind="bar", color=bar_color, ax=ax)
+
+                # Add data labels on top of bars (works even with pandas plotting)
+                for container in ax.containers:
+                    ax.bar_label(container, fmt='%.0f', label_type='edge', fontsize=9)
+
+                ax.set_title(f"Major Crimes in {selected_district}", fontsize=14, fontweight='bold')
+                ax.set_ylabel("Number of Cases", fontsize=11)
+                ax.set_xlabel("Crime Type", fontsize=11)
+                ax.tick_params(axis='x', rotation=45)
+                ax.grid(axis='y', linestyle='--', alpha=0.7)
+                ax.set_axisbelow(True)
+
+                plt.tight_layout()
+                st.pyplot(fig)
+                plt.close(fig)
         else:
             st.info("👉 Please select a state and district to view data.")
+
 
 
     # ============================
@@ -436,3 +472,4 @@ else:
             st.info("👉 Please select a state to generate future predictions.")
 
         st.divider()
+
