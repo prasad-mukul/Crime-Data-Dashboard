@@ -39,7 +39,7 @@ def logout():
 # LOGIN/REGISTRATION PAGE FUNCTION (SIMPLE FULL-WIDTH)
 # ============================
 def login_page():
-    st.markdown("<h1 style='text-align:center; color: #1f77b4;'>🕵️ Crime Data Visualization Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center; color: #1f77b4;'>🕵 Crime Data Visualization Dashboard</h1>", unsafe_allow_html=True)
     st.write("<p style='text-align:center; font-size: 1.1em;'>Please log in or register to access the full analytical features.</p>", unsafe_allow_html=True)
     st.divider()
 
@@ -99,14 +99,14 @@ else:
     header_col1, header_col2 = st.columns([7, 2])
     
     with header_col1:
-        st.markdown(f"**Welcome, {st.session_state.username}!**") # Welcome message
+        st.markdown(f"*Welcome, {st.session_state.username}!*") # Welcome message
     
     with header_col2:
         # Logout button styled to fit on one line
         st.button("🔓 Logout", on_click=logout, type='primary', width='stretch')
     
     # Main Title and Subtitle (placed below the welcome/logout row for clean layout)
-    st.markdown("<h1 style='text-align:center; color: #1f77b4;'>🕵️ Crime Data Visualization Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center; color: #1f77b4;'>🕵 Crime Data Visualization Dashboard</h1>", unsafe_allow_html=True)
     st.write("<p style='text-align:center; font-size: 1.1em;'>Explore crime statistics, safety insights, and predictive trends across Indian states (2013 data)</p>", unsafe_allow_html=True)
     
     st.divider()
@@ -124,7 +124,7 @@ else:
         with col2:
             st.button("🛡 Safety Ratio", width='stretch', on_click=lambda: go_to("SafetyRatio"))
         with col3:
-            st.button("⚖️ Compare Two States", width='stretch', on_click=lambda: go_to("Compare"))
+            st.button("⚖ Compare Two States", width='stretch', on_click=lambda: go_to("Compare"))
 
         st.markdown("")
         col4, col5 = st.columns(2, gap="large")
@@ -152,21 +152,13 @@ else:
         selected_state = st.selectbox("Select State/UT", states)
 
         # Filter state data based on the selection
-        # --- Filter and safely select District ---
-        if selected_state:
-            state_data_filtered = data[data["STATE/UT"] == selected_state.upper()]
-        else:
-            state_data_filtered = pd.DataFrame()
-        selected_district = None  # initialize to avoid NameError
-        if not state_data_filtered.empty and "DISTRICT" in state_data_filtered.columns:
+        state_data_filtered = data[data["STATE/UT"] == selected_state.upper()]
+        if "DISTRICT" in state_data_filtered.columns:
             districts = state_data_filtered["DISTRICT"].unique()
-            if len(districts) > 0:
-                selected_district = st.selectbox("Select District", districts)
-            else:
-                st.warning("⚠️ No districts found for this state.")
         else:
             districts = []
-            st.warning("⚠️ 'DISTRICT' column missing in the filtered data. Please verify your CSV.")
+            st.warning("⚠ 'DISTRICT' column missing in the filtered data. Please verify your CSV.")
+            selected_district = st.selectbox("Select District", districts)
 
         st.divider() 
 
@@ -261,7 +253,7 @@ else:
     # COMPARE TWO STATES (ENHANCED)
     # ============================
     elif st.session_state.page == "Compare":
-        st.markdown("## ⚖️ State-to-State Crime Comparison")
+        st.markdown("## ⚖ State-to-State Crime Comparison")
         st.button("⬅ Back to Home", on_click=lambda: go_to("Home")) 
         st.divider()
 
@@ -350,13 +342,13 @@ else:
             top_crime_s2 = get_top_crime_composition(data, state2, top_n=1).index[0] if not get_top_crime_composition(data, state2, top_n=1).empty and get_top_crime_composition(data, state2, top_n=1).sum() > 0 else "Unspecified Crimes"
             
             # Generate the insightful sentence
-            insight = f"Based on the analysis, **{safer_state}** is the safer of the two states, showing a Safety Ratio difference of **{abs(ratio1 - ratio2):.2f} percentage points**."
-            insight += f" The dominant crime category in **{state1}** is **{top_crime_s1}**, while **{state2}** is primarily characterized by **{top_crime_s2}**."
+            insight = f"Based on the analysis, *{safer_state}* is the safer of the two states, showing a Safety Ratio difference of *{abs(ratio1 - ratio2):.2f} percentage points*."
+            insight += f" The dominant crime category in *{state1}* is *{top_crime_s1}, while **{state2}* is primarily characterized by *{top_crime_s2}*."
             
             st.success(insight)
             
         else:
-            st.warning("⚠️ Please select two different states to start the comparison.")
+            st.warning("⚠ Please select two different states to start the comparison.")
 
         st.divider()
 
@@ -444,6 +436,3 @@ else:
             st.info("👉 Please select a state to generate future predictions.")
 
         st.divider()
-
-
-
