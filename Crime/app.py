@@ -136,10 +136,6 @@ else:
         st.markdown("---")
         st.caption("Tip: Click any button to explore detailed insights for crime data visualization.")
 
-
-    # ============================
-    # STATE CRIME SEARCH
-    # ============================
         # ============================
     # STATE CRIME SEARCH (fixed)
     # ============================
@@ -163,14 +159,26 @@ else:
             st.stop()
 
         # Filter state data safely (STATE/UT values in backend are normalized to UPPER)
+        # ---- Robust State Filtering ----
+        selected_district = None  # always initialize
+
         if selected_state:
-            state_upper = selected_state.upper()
-            state_data_filtered = data[data["STATE/UT"] == state_upper].copy()
+    # Match more loosely to avoid missing due to stray spaces or formatting
+            state_data_filtered = data[data["STATE/UT"].str.contains(selected_state.upper(), na=False)]
         else:
             state_data_filtered = pd.DataFrame()
 
-        # Make sure DISTRICT selection variable always exists
-        selected_district = None
+        # ---- District Dropdown ----
+        if not state_data_filtered.empty and "DISTRICT" in state_data_filtered.columns:
+            districts = sorted([d for d in state_data_filtered["DISTRICT"].unique() if isinstance(d, str) and d.strip() != ""])
+    
+            if districts:
+                selected_district = st.selectbox("Select District", districts)
+            else:
+                st.warning(f"⚠ No districts found for state: {selected_state}")
+        else:
+            st.warning(f"⚠ No matching rows for state: {selected_state} (Check CSV formatting)")
+
 
         # Safe district dropdown: only show when DISTRICT column exists and there is data
         if not state_data_filtered.empty and "DISTRICT" in state_data_filtered.columns:
@@ -472,4 +480,5 @@ else:
             st.info("👉 Please select a state to generate future predictions.")
 
         st.divider()
+
 
