@@ -3,8 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 import numpy as np
-# This will import from the "backend_fixed.py" file you have in the Canvas
-from backend_fixed import (
+# FIX: Changed the import to match your likely filename "backend.py"
+from backend import (
     load_data, get_years, get_states, filter_state_district,
     calculate_safety_ratio, get_top_crime_composition,
     authenticate_user, register_user, is_username_registered
