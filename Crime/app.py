@@ -152,7 +152,7 @@ else:
         selected_state = st.selectbox("Select State/UT", states)
 
         # Filter state data based on the selection
-        state_data_filtered = filter_state_district(data, selected_state, year=selected_year)
+        state_data_filtered = data[data["STATE/UT"] == selected_state.upper()]
         if "DISTRICT" in state_data_filtered.columns:
             districts = state_data_filtered["DISTRICT"].unique()
         else:
@@ -436,4 +436,5 @@ else:
             st.info("👉 Please select a state to generate future predictions.")
 
         st.divider()
+
 
