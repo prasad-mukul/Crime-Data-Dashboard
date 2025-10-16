@@ -3,8 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 import numpy as np
-# Ensure your backend file is named backend.py in the same directory
-from backend import (
+# This will import from the "backend_fixed.py" file you have in the Canvas
+from backend_fixed import (
     load_data, get_years, get_states, filter_state_district,
     calculate_safety_ratio, get_top_crime_composition,
     authenticate_user, register_user, is_username_registered
@@ -40,8 +40,6 @@ def logout():
     st.session_state.logged_in = False
     st.session_state.page = "Home"
     st.session_state.username = None
-    # FIX: st.rerun() is important here to ensure the UI updates immediately
-    # after the state changes, preventing any weird UI flashes or errors.
     st.rerun()
 
 # ============================
@@ -52,14 +50,6 @@ def login_page():
     st.write("<p style='text-align:center; font-size: 1.1em;'>Please log in or register to access the full analytical features.</p>", unsafe_allow_html=True)
     st.divider()
 
-    # --- CRITICAL NOTE ON STREAMLIT CLOUD DEPLOYMENT ---
-    # The registration feature will appear to work, but because the user data is stored
-    # in memory (in the USER_CREDENTIALS dictionary in backend.py), any new user
-    # registrations will be WIPED OUT whenever the Streamlit Cloud app restarts
-    # (e.g., after a period of inactivity or a server update).
-    # For a hackathon, this is often acceptable. For a real-world app, you would need
-    # a persistent database (like Firebase, Supabase, or a simple file-based DB)
-    # to store user credentials permanently.
     st.info("""
         *Note for Judges & Users:* The user registration is for demonstration purposes.
         If the app has been inactive, newly registered accounts may be cleared.
@@ -80,7 +70,6 @@ def login_page():
                     st.session_state.logged_in = True
                     st.session_state.username = login_username
                     st.success(f"Welcome back, {login_username}!")
-                    # This rerun is essential for immediately switching to the dashboard view
                     st.rerun()
                 else:
                     if is_username_registered(login_username):
@@ -165,19 +154,21 @@ else:
         selected_year = st.selectbox("Select Year", years) if years else None
         selected_state = st.selectbox("Select State/UT", states) if states else None
 
-        # FIX: The rest of the logic should only run if a state is actually selected.
-        # This prevents errors if the state list is empty or the user hasn't chosen yet.
         if selected_state:
-            # Filter state data to find its districts
             state_data_filtered = data[data["STATE/UT"] == selected_state]
+            selected_district = None  # Initialize to None
+
             if "DISTRICT" in state_data_filtered.columns:
-                # Get a unique, sorted list of districts for the dropdown
                 districts = sorted(state_data_filtered["DISTRICT"].unique())
+
+                # FIX: Only show the district dropdown if there are districts.
+                # This prevents an error if the list of districts is empty.
+                if districts:
+                    selected_district = st.selectbox("Select District", districts)
+                else:
+                    st.warning(f"No specific district data found for {selected_state}.")
             else:
-                districts = []
                 st.warning("⚠ 'DISTRICT' column not found in the data for this state.")
-            
-            selected_district = st.selectbox("Select District", districts)
 
             st.divider()
 
@@ -194,7 +185,6 @@ else:
                     "MURDER", "RAPE", "KIDNAPPING & ABDUCTION",
                     "THEFT", "BURGLARY", "DOWRY DEATHS", "TOTAL IPC CRIMES"
                 ]
-                # Filter for columns that actually exist in the dataframe to avoid KeyErrors
                 display_cols = [col for col in crime_columns if col in district_data.columns]
                 crime_sums = district_data[display_cols].sum(numeric_only=True)
 
@@ -283,7 +273,6 @@ else:
         with colA:
             state1 = st.selectbox("Select First State", states, key="s1")
         with colB:
-            # FIX: Ensure the default for the second state is different from the first
             state2_options = [s for s in states if s != state1]
             state2 = st.selectbox("Select Second State", state2_options, key="s2")
 
@@ -404,7 +393,6 @@ else:
                 last_year = X.flatten()[-1]
                 future_years = np.arange(last_year + 1, last_year + 6).reshape(-1, 1)
                 predictions = model.predict(future_years)
-                # Ensure predictions are non-negative
                 predictions[predictions < 0] = 0
 
                 future_df = pd.DataFrame({
